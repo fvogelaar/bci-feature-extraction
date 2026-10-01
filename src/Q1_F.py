@@ -69,7 +69,7 @@ else:
         eeg_np = np.array(eeg_data, dtype=float)
         
         win = window.update(eeg_np)
-
+        first_window_received = False
         if win is not None:
             if not first_window_received:
                 observed_delay = time.monotonic() - stream_start_time
