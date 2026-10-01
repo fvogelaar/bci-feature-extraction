@@ -19,18 +19,19 @@ for file, label in files.items():
     # Sort chronologically and normalize time
     df = df.sort_values(by="timestamp")
     df["time"] = df["timestamp"] - df["timestamp"].iloc[0]
-
+    
     # Filter by time threshold
     df_filtered = df[df["time"] <= MAX_TIME_SEC].copy()
-    
+     
     # Compute rolling variance over the last N steps
     df_filtered["rolling_var"] = df_filtered["C3_log_mu"].rolling(window=ROLLING_STEPS).var()
     
     # Top Plot: Trajectories
     ax1.plot(df_filtered["time"], df_filtered["C3_log_mu"], label=label, alpha=0.85)
-    
+    print(df['time'])
     # Bottom Plot: Rolling Variance
     ax2.plot(df_filtered["time"], df_filtered["rolling_var"], label=f"{label} Variance", alpha=0.85)
+
 
 # Top Plot
 ax1.set_ylabel("C3 Log10 Mu Power")

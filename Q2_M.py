@@ -2,7 +2,7 @@
 Real-time feature extraction pipeline
 """
 
-from pylsl import StreamInlet, resolve_byprop
+from pylsl import StreamInlet, resolve_byprop, resolve_streams
 from src.window import SlidingWindow
 from src.bandpower import BandPower
 from src.log import FeatureLogger
@@ -13,7 +13,7 @@ FS = 250
 N_CHANNELS = 8
 USE_SIMULATION = True
 WINDOW_STEP = 25    
-WINDOW_SIZE = 625   # (125, 250, or 625)
+WINDOW_SIZE = 125   # (125, 250, or 625)
 
 # not really sure about whether this indexing is correct
 C3_IDX, C4_IDX = 1, 3
@@ -21,13 +21,9 @@ C3_IDX, C4_IDX = 1, 3
 window = SlidingWindow(size=WINDOW_SIZE, step=WINDOW_STEP)
 # mu band is 8-12
 feature = BandPower(fs=FS, band=(8, 12))
-logger = FeatureLogger("features_long.csv")
+logger = FeatureLogger("features_short.csv")
 
-streams = resolve_byprop(
-    "type",
-    "EEG",
-    timeout=5
-    )
+streams = resolve_streams()
 
 if not streams:
     raise RuntimeError(
@@ -38,6 +34,7 @@ print(f"Stream name: {streams[0].name()}")
 print(f"# channels published: {streams[0].channel_count()}")
 
 inlet = StreamInlet(streams[0])
+stream_start_time = time.monotonic()
 first_window_received = False
 while True:
     # pull the samples & handle time out
@@ -49,7 +46,7 @@ while True:
     eeg_data = sample[:N_CHANNELS]
     eeg_np = np.array(eeg_data, dtype=float)
     # start the clock before window.update
-    stream_start_time = time.monotonic()
+    
     win = window.update(eeg_np)
 
 
@@ -63,10 +60,8 @@ while True:
             first_window_received = True
         feats = feature.compute(win)
 
-        logger.log(feats)
-        raw_band_power = feature.compute(win)
         # Extract C3 and C4 channels
-        motor_power = raw_band_power[[C3_IDX, C4_IDX]]
+        motor_power = feats[[C3_IDX, C4_IDX]]
 
         # log transformation
         log_features = np.log10(motor_power + 1e-10)
