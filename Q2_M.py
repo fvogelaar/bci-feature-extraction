@@ -21,7 +21,7 @@ C3_IDX, C4_IDX = 1, 3
 window = SlidingWindow(size=WINDOW_SIZE, step=WINDOW_STEP)
 # mu band is 8-12
 feature = BandPower(fs=FS, band=(8, 12))
-logger = FeatureLogger("features.csv")
+logger = FeatureLogger("features_long.csv")
 
 streams = resolve_byprop(
     "type",
@@ -68,7 +68,7 @@ while True:
         # Extract C3 and C4 channels
         motor_power = raw_band_power[[C3_IDX, C4_IDX]]
 
-        # log10 transformation
+        # log transformation
         log_features = np.log10(motor_power + 1e-10)
         logger.log(log_features, timestamp=timestamp)
         print(f"Logged at t={timestamp:.4f} | Features (C3, C4 log-mu power): {log_features}")
