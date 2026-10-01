@@ -2,7 +2,7 @@
 Real-time feature extraction pipeline
 """
 
-from pylsl import StreamInlet, resolve_byprop
+from pylsl import StreamInlet, resolve_byprop, resolve_streams
 from src.window import SlidingWindow
 from src.bandpower import BandPower
 from src.log import FeatureLogger
@@ -13,7 +13,7 @@ FS = 250
 N_CHANNELS = 8
 USE_SIMULATION = True
 WINDOW_STEP = 25    # as specified by assignment 1
-WINDOW_SIZE = 625   # (125, 250, or 625)
+WINDOW_SIZE = 250   # (125, 250, or 625)
 
 window = SlidingWindow(size=WINDOW_SIZE, step=WINDOW_STEP)
 feature = BandPower(fs=FS, band=(8, 12))
@@ -21,11 +21,11 @@ logger = FeatureLogger("features.csv")
 
 if USE_SIMULATION:
     print("using simulation data")
+    stream_start_time = time.monotonic()
     signal = np.random.randn(FS * 5, N_CHANNELS)
 
     first_window_received = False
-    # start the clock before window.update
-    stream_start_time = time.monotonic()
+
     for sample in signal:
         win = window.update(sample)
         if win is not None:
@@ -36,7 +36,7 @@ if USE_SIMULATION:
                     f"{observed_delay:.3f} seconds"
                 )
                 first_window_received = True
-                # Note: observed delay for simulation = 0
+                # Note: observed delay for np-array simulation = 0
                 # because all samples arrive simultaneously
             feats = feature.compute(win)
             logger.log(feats)
@@ -44,20 +44,21 @@ if USE_SIMULATION:
     print(f"Overlap percentage: {100*(1-(WINDOW_STEP/WINDOW_SIZE))}")
 
 else:
-    streams = resolve_byprop(
-        "type",
-        "EEG",
-        timeout=5
-        )
+    streams = resolve_streams()
     if not streams:
         raise RuntimeError(
-            "No EEG type LSL stream found. "
+            "No LSL stream found. "
         )
 
     print(f"Stream name: {streams[0].name()}")
     print(f"# channels published: {streams[0].channel_count()}")
 
+    first_window_received = False
+
     inlet = StreamInlet(streams[0])
+
+    stream_start_time = time.monotonic()
+
     while True:
         # pull the samples & handle time out
         sample, timestamp = inlet.pull_sample(timeout=1.0)
@@ -66,8 +67,7 @@ else:
             continue
         eeg_data = sample[:8]
         eeg_np = np.array(eeg_data, dtype=float)
-        # start the clock before window.update
-        stream_start_time = time.monotonic()
+        
         win = window.update(eeg_np)
 
         if win is not None:
@@ -80,5 +80,4 @@ else:
                 first_window_received = True
             feats = feature.compute(win)
             logger.log(feats)
-            print("Features:", feats)
-        print(f"Overlap percentage: {100*(1-(WINDOW_STEP/WINDOW_SIZE))}")
+            #print("Features:", feats)
